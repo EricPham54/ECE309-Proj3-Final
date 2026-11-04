@@ -90,7 +90,9 @@ private:
             if (((childIndex + 1) < n) && (less_(data_[childIndex + 1], data_[childIndex]))){               // adds 1 to child if child+1 is within data_ size limit and sibling of child node is less than the original child node
                 childIndex += 1;
             }
-            if (!less_(data_[childIndex], data_[i])) break;
+            if (!less_(data_[childIndex], data_[i])){
+                break;
+            }
             std::swap(data_[i], data_[childIndex]);
             i = childIndex;
         }
