@@ -81,6 +81,19 @@ private:
         Node*        right = nullptr;
     };
 
+    // post-order delete
+    static void        destroy(Node* n);
+
+    // gets height of current node through recursion
+    static std::size_t height_of(const Node* n);
+
+    // gets in order sequence of the BST
+    static void        in_order(const Node* n,
+                                const std::function<void(const MemoryRecord&)>& fn);
+
+    // removes node from the BST and returns the new root of the subtree
+    static Node*       remove_node(Node* n, std::uint64_t id, bool* removed);
+
     Node*       root_ = nullptr;
     std::size_t count_ = 0;
 };
