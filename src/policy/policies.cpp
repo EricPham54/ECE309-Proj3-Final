@@ -5,66 +5,66 @@
 #include <utility>
 
 AllowlistPolicy::AllowlistPolicy(const std::vector<std::string>& programs) {
-    // TODO: copy the names into programs_ (an std::unordered_set).
-    // Clue: sets use insert(x), not push_back(x). One-liner: in the member
-    // initializer list,  programs_(programs.begin(), programs.end()).
-    (void)programs;
+    programs_.insert(programs.begin(), programs.end());                                                 // copies the programs' names into programs_ by using insert, not push_back
 }
 
 Decision AllowlistPolicy::evaluate(const CommandRequest& req) {
-    // TODO
-    // Clue: test membership with  programs_.count(x) > 0  or
-    // programs_.find(x) != programs_.end().  (contains() is C++20; this
-    // project is C++17.)  Build results with Decision::allow(reason, name())
-    // and Decision::deny(reason, name()). Any non-empty reason is fine;
-    // naming the program ("'rm' is not on the allowlist") helps the user.
-    (void)req;
-    return Decision::deny("not implemented", name());
+    if (programs_.count(req.program) > 0) {                                                             // if programs_ has the CommandRequest, then build the result Decision::allow(reason, name())
+        return Decision::allow("'" + req.program + "' is on the allowlist", name());
+    }
+
+    return Decision::deny("'" + req.program + "' is not on the allowlist", name());                     // if programs_ doesn't contain the CommandRequest, then build the result Decision::deny(reason, name())
 }
 
 ArgumentPatternPolicy::ArgumentPatternPolicy(std::vector<std::string> patterns)
     : patterns_(std::move(patterns)) {}
 
 Decision ArgumentPatternPolicy::evaluate(const CommandRequest& req) {
-    // TODO: search req.command_line() for each pattern.
-    // Clue: std::string::find returns std::string::npos when it finds
-    // nothing, NOT 0 or false. "if (line.find(p))" is true for almost
-    // everything. Compare with npos.
-    // Clue: skip empty patterns: every string "contains" the empty string.
-    (void)req;
-    return Decision::deny("not implemented", name());
+    // command_line() joins the program and its args with single spaces, so
+    // {"rm", {"-rf", "/"}} becomes "rm -rf /" and the pattern "rm -rf" matches it.
+    std::string search_line = req.command_line();                                                       // create string assigned with req.command_line() to find patterns within the CommandRequest
+
+    for (const std::string& pattern : patterns_) {                                                      // iterates through each pattern within patterns_
+        if (pattern.empty()){                                                                           // if the pattern is empty, skip the pattern
+            continue;
+        }
+
+        if (search_line.find(pattern) != std::string::npos) {                                           // if req.command_line contains any patterns through comparison of std::string::npos, then return result Decision::deny(reason, name())
+            return Decision::deny("command contains forbidden pattern \"" + pattern + "\"", name());
+        }
+    }
+
+    return Decision::allow("no forbidden pattern found", name());                                       // if req.command_line doesn't contain any pattern, then return result Decision::allow(reason, name())
 }
 
 ConfirmPolicy::ConfirmPolicy(const std::vector<std::string>& programs) {
-    // TODO
-    (void)programs;
+    programs_.insert(programs.begin(), programs.end());                                                 // copies the programs' names into programs_ by using insert, not push_back
 }
 
 Decision ConfirmPolicy::evaluate(const CommandRequest& req) {
-    // TODO: Decision::ask(...) for listed programs, Decision::allow(...) otherwise.
-    (void)req;
-    return Decision::deny("not implemented", name());
+    if (programs_.count(req.program) > 0) {                                                             // if programs_ doesn't have the program of the CommandRequest, then ask if req.program is one of the programs
+        return Decision::ask("'" + req.program + "' needs your confirmation", name());
+    }
+
+    return Decision::allow("'" + req.program + "' does not need confirmation", name());                 // if programs_ doesn't have the program of the CommandRequest, then Allow the req.program
 }
 
 RateLimitPolicy::RateLimitPolicy(std::size_t max_commands, double window_seconds, const Clock& clock)
     : max_(max_commands), window_(window_seconds), clock_(clock) {}
 
 Decision RateLimitPolicy::evaluate(const CommandRequest& req) {
-    // TODO: drop timestamps that left the window, then decide.
-    // Clues, in order:
-    //  1. now = clock_.now_seconds().
-    //  2. While the queue is NOT empty and its front timestamp has left the
-    //     window, pop it. A timestamp s is still INSIDE when now - s < window_,
-    //     so it has left when now - s >= window_ (exactly window_ seconds old
-    //     counts as gone). Calling front() on an empty queue is undefined
-    //     behavior (UBSan says "misaligned address"): check empty() first.
-    //  3. If the queue already holds max_ timestamps: Deny, and do NOT push.
-    //  4. Otherwise push(now) and Allow. Only allowed requests are recorded.
-    (void)req;
-    (void)max_;
-    (void)window_;
-    (void)clock_;
-    return Decision::deny("not implemented", name());
+    double now = clock_.now_seconds();                                                                  // captures the current time in seconds
+
+    while (!times_.empty() && (now - times_.front() >= window)_) {                                      // while the queue isn't empty and its front timestamp has left the window, pop the top of the queue
+        times_.pop();
+    }
+
+    if (times_.size() >= max_) {                                                                        // if the queue already holds max_ timestamps, return Decision::deny(reason, name()) and don't push onto times_
+        return Decision::deny("rate limit: " + std::to_string(max_) + " commands per " + std::to_string(window_) + " s", name());
+    }
+
+    times_.push(now);                                                                                   // if the queue has room, push now onto times_
+    return Decision::allow("within the rate limit", name());                                            // return with Decision::allow(reason, name())  after pushing now onto times_ queue
 }
 
 std::size_t RateLimitPolicy::tracked() const noexcept { return times_.size(); }
