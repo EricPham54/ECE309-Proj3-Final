@@ -20,8 +20,6 @@ ArgumentPatternPolicy::ArgumentPatternPolicy(std::vector<std::string> patterns)
     : patterns_(std::move(patterns)) {}
 
 Decision ArgumentPatternPolicy::evaluate(const CommandRequest& req) {
-    // command_line() joins the program and its args with single spaces, so
-    // {"rm", {"-rf", "/"}} becomes "rm -rf /" and the pattern "rm -rf" matches it.
     std::string search_line = req.command_line();                                                       // create string assigned with req.command_line() to find patterns within the CommandRequest
 
     for (const std::string& pattern : patterns_) {                                                      // iterates through each pattern within patterns_
@@ -53,9 +51,10 @@ RateLimitPolicy::RateLimitPolicy(std::size_t max_commands, double window_seconds
     : max_(max_commands), window_(window_seconds), clock_(clock) {}
 
 Decision RateLimitPolicy::evaluate(const CommandRequest& req) {
+    (void)req;
     double now = clock_.now_seconds();                                                                  // captures the current time in seconds
 
-    while (!times_.empty() && (now - times_.front() >= window)_) {                                      // while the queue isn't empty and its front timestamp has left the window, pop the top of the queue
+    while (!times_.empty() && (now - times_.front() >= window_)) {                                      // while the queue isn't empty and its front timestamp has left the window, pop the top of the queue
         times_.pop();
     }
 
