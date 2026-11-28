@@ -549,7 +549,7 @@ TEST(graph_missing_requirement_message) {
 
     DepGraph g = make_graph({"a", "b"}, {{"a", "b"}, {"b", "none"}});
     CHECK(!g.order_from("a", &order, &error));
-    CHECK_EQ(error, std::string("missing: gone (required by b)"));
+    CHECK_EQ(error, std::string("missing: none (required by b)"));
 }
 
 // test DepGraph for `dependents` correct ordering
